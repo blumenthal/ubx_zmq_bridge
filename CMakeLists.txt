@@ -11,6 +11,8 @@ set(INSTALL_LIB_BLOCKS_DIR lib/microblx/blocks CACHE PATH "Installation director
 set(INSTALL_INCLUDE_DIR include/microblx CACHE PATH "Installation directory for header files (types)")
 set(INSTALL_CMAKE_DIR  share/microblx/cmake CACHE PATH  "Installation directory for CMake files") # default ${DEF_INSTALL_CMAKE_DIR}
 
+FIND_PACKAGE(ZMQ REQUIRED)
+
 # Make relative paths absolute
 foreach(p LIB_TYPES LIB_BLOCKS BIN INCLUDE CMAKE)
   set(var INSTALL_${p}_DIR)
@@ -50,12 +52,13 @@ find_package(Microblx REQUIRED)
 
 include_directories(
   ${UBX_INCLUDE_DIR}
+  ${ZMQ_INCLUDE_DIRS}
 )
 
 # Compile library zmqsenderlib
 add_library(zmqsenderlib SHARED ..//ubx_zmq_bridge/src/zmq_sender.cpp )
 set_target_properties(zmqsenderlib PROPERTIES PREFIX "")
-target_link_libraries(zmqsenderlib ${UBX_LIBRARIES})
+target_link_libraries(zmqsenderlib ${UBX_LIBRARIES} ${ZMQ_LIBRARIES})
 
 # Install zmqsenderlib
 install(TARGETS zmqsenderlib DESTINATION ${INSTALL_LIB_BLOCKS_DIR} EXPORT zmqsenderlib-block)
@@ -65,7 +68,7 @@ install(EXPORT zmqsenderlib-block DESTINATION ${INSTALL_CMAKE_DIR})
 # Compile library zmqrecieverlib
 add_library(zmqrecieverlib SHARED ..//ubx_zmq_bridge/src/zmq_reciever.cpp )
 set_target_properties(zmqrecieverlib PROPERTIES PREFIX "")
-target_link_libraries(zmqrecieverlib ${UBX_LIBRARIES})
+target_link_libraries(zmqrecieverlib ${UBX_LIBRARIES} ${ZMQ_LIBRARIES})
 
 # Install zmqrecieverlib
 install(TARGETS zmqrecieverlib DESTINATION ${INSTALL_LIB_BLOCKS_DIR} EXPORT zmqrecieverlib-block)
