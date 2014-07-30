@@ -26,7 +26,7 @@ ubx_config_t zmq_sender_config[] = {
 
 /* declaration port block ports */
 ubx_port_t zmq_sender_ports[] = {
-        { .name="zmq_out", .in_type_name="unsigned char", .in_data_len=1, .doc="Arbitrary byte stream to be send as a ZMQ message."  },
+        { .name="zmq_out", .in_type_name="unsigned char", .doc="Arbitrary byte stream to be send as a ZMQ message."  },
         { NULL },
 };
 

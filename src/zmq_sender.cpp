@@ -8,6 +8,26 @@
 
 UBX_MODULE_LICENSE_SPDX(BSD-3-Clause)
 
+const unsigned int DEFAULT_BUFFER_LENGTH = 20000;
+
+/* hexdump a buffer */
+//static void hexdump(unsigned char *buf, unsigned long index, unsigned long width)
+//{
+//	unsigned long i, fill;
+//
+//	for (i=0;i<index;i++) { printf("%02x ", buf[i]); } /* dump data */
+//	for (fill=index; fill<width; fill++) printf(" ");  /* pad on right */
+//
+//	printf(": ");
+//
+//	/* add ascii repesentation */
+//	for (i=0; i<index; i++) {
+//		if (buf[i] < 32) printf(".");
+//		else printf("%c", buf[i]);
+//	}
+//	printf("\n");
+//}
+
 /* define a structure for holding the block local state. By assigning an
  * instance of this struct to the block private_data pointer (see init), this
  * information becomes accessible within the hook functions.
@@ -21,6 +41,13 @@ struct zmq_sender_info
 
         // ZMQ publisher
         zmq::socket_t* publisher;
+
+        // Data buffer fpr input port
+		unsigned char* buffer;
+
+		// Length of the buffer
+		unsigned long buffer_length;
+
 
         /* this is to have fast access to ports for reading and writing, without
          * needing a hash table lookup */
@@ -45,6 +72,10 @@ int zmq_sender_init(ubx_block_t *b)
         }
         b->private_data=inf;
         update_port_cache(b, &inf->ports);
+
+        inf->buffer_length = DEFAULT_BUFFER_LENGTH; //TODO read from config
+        inf->buffer = new unsigned char [inf->buffer_length];
+
 
         try {
 
@@ -87,6 +118,7 @@ void zmq_sender_stop(ubx_block_t *b)
 void zmq_sender_cleanup(ubx_block_t *b)
 {
         struct zmq_sender_info *inf = (struct zmq_sender_info*) b->private_data;
+        delete inf->buffer;
         delete inf->publisher;
         free(b->private_data);
 }
@@ -102,32 +134,38 @@ void zmq_sender_step(ubx_block_t *b)
 		ubx_port_t* port = inf->ports.zmq_out;
 		assert(port != 0);
 
+
 		ubx_data_t msg;
 		checktype(port->block->ni, port->in_type, "unsigned char", port->name, 1);
 		msg.type = port->in_type;
-		msg.len = 1;
-//		int retVal = __port_read(port, &msg);
-//
-//		if (retVal < 0) {
-//			std::cout << "zmq_sender: No data recieved from port" << std::endl;
-//			return;
-//		}
+		msg.len = inf->buffer_length;
+		msg.data = inf->buffer;
+
+		std::cout << "zmq_sender: Reading from port" << std::endl;
+		int read_bytes = __port_read(port, &msg);
+		if (read_bytes <= 0) {
+			std::cout << "zmq_sender: No data recieved from port" << std::endl;
+			return;
+		}
 
 		/* Test message */
-		unsigned long length = 4;
-		unsigned char buffer[length];
-		buffer[0] = 0xDE; //DEAFBEAF dummy message
-		buffer[1] = 0xAF;
-		buffer[2] = 0xBE;
-		buffer[3] = 0xAF;
-		msg.len = length;
-		msg.data = (void*)&buffer;
+//		unsigned long length = 4;
+//		unsigned char buffer[length];
+//		buffer[0] = 0xDE; //DEAFBEAF dummy message
+//		buffer[1] = 0xAF;
+//		buffer[2] = 0xBE;
+//		buffer[3] = 0xAF;
+//		msg.len = length;
+//		msg.data = (void*)&buffer;
+//		int read_bytes = length;
 
-		std::cout << "zmq_sender: msg.len = " << msg.len << std::endl;
+		std::cout << "zmq_sender: msg.len = " << data_size(&msg) << " read bytes = " << read_bytes << std::endl;
 
 		/* Setup ZMQ message*/
+		//hexdump((unsigned char *)msg.data, read_bytes, 16);
 		zmq::message_t message(msg.len);
-		memcpy(message.data(), (char *)msg.data, msg.len);
+		memcpy(message.data(), (char *)msg.data, read_bytes);
+
 
 		/* Send the message */
 		inf->publisher->send(message);
