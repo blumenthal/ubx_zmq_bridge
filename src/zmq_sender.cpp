@@ -46,13 +46,23 @@ int zmq_sender_init(ubx_block_t *b)
         b->private_data=inf;
         update_port_cache(b, &inf->ports);
 
-        inf->context = new zmq::context_t(1);
-		inf->publisher = new zmq::socket_t(*inf->context, ZMQ_PUB);
-		connection_spec_str = (char*) ubx_config_get_data_ptr(b, "connection_spec", &tmplen);
-		inf->publisher->bind(connection_spec_str);
+        try {
 
-		connection_spec = std::string(connection_spec_str);
-		std::cout << "ZMQ connection configuration for block " << b->name << " is " << connection_spec << std::endl;
+        	inf->context = new zmq::context_t(1);
+        	inf->publisher = new zmq::socket_t(*inf->context, ZMQ_PUB);
+
+        	connection_spec_str = (char*) ubx_config_get_data_ptr(b, "connection_spec", &tmplen);
+			connection_spec = std::string(connection_spec_str);
+			std::cout << "ZMQ connection configuration for block " << b->name << " is " << connection_spec << std::endl;
+
+        	inf->publisher->bind(connection_spec_str);
+
+		} catch (std::exception e) {
+			std::cout << e.what() << " : " << zmq_strerror (errno) << std::endl;
+
+			goto out;
+		}
+
 
         ret=0;
 out:
@@ -76,6 +86,8 @@ void zmq_sender_stop(ubx_block_t *b)
 /* cleanup */
 void zmq_sender_cleanup(ubx_block_t *b)
 {
+        struct zmq_sender_info *inf = (struct zmq_sender_info*) b->private_data;
+        delete inf->publisher;
         free(b->private_data);
 }
 
@@ -84,7 +96,7 @@ void zmq_sender_step(ubx_block_t *b)
 {
 
         struct zmq_sender_info *inf = (struct zmq_sender_info*) b->private_data;
-        std::cout << "zmq_sender: Processing an incoming update" << std::endl;
+        std::cout << "zmq_sender: Processing a port update" << std::endl;
 
 		/* Read data from port */
 		ubx_port_t* port = inf->ports.zmq_out;
@@ -94,7 +106,24 @@ void zmq_sender_step(ubx_block_t *b)
 		checktype(port->block->ni, port->in_type, "unsigned char", port->name, 1);
 		msg.type = port->in_type;
 		msg.len = 1;
-		__port_read(port, &msg);
+//		int retVal = __port_read(port, &msg);
+//
+//		if (retVal < 0) {
+//			std::cout << "zmq_sender: No data recieved from port" << std::endl;
+//			return;
+//		}
+
+		/* Test message */
+		unsigned long length = 4;
+		unsigned char buffer[length];
+		buffer[0] = 0xDE; //DEAFBEAF dummy message
+		buffer[1] = 0xAF;
+		buffer[2] = 0xBE;
+		buffer[3] = 0xAF;
+		msg.len = length;
+		msg.data = (void*)&buffer;
+
+		std::cout << "zmq_sender: msg.len = " << msg.len << std::endl;
 
 		/* Setup ZMQ message*/
 		zmq::message_t message(msg.len);

@@ -24,7 +24,7 @@ ubx_config_t zmq_reciever_config[] = {
 
 /* declaration port block ports */
 ubx_port_t zmq_reciever_ports[] = {
-        { .name="zmq_in", .in_type_name="unsigned char", .in_data_len=1, .doc="Arbitrary byte stream as recieved by a ZMQ message."  },
+        { .name="zmq_in", .out_type_name="unsigned char", .in_data_len=1, .doc="Arbitrary byte stream as recieved by a ZMQ message."  },
         { NULL },
 };
 

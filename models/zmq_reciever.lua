@@ -9,7 +9,7 @@ return block
       },
 
       ports = {
-	 { name="zmq_in", in_type_name="unsigned char", doc="Arbitrary byte stream as recieved by a ZMQ message." },
+	 { name="zmq_in", out_type_name="unsigned char", doc="Arbitrary byte stream as recieved by a ZMQ message." },
       },
       
       operations = { start=true, stop=true, step=true },
